@@ -1,5 +1,6 @@
 /output*
 /.auto.deps
+dl/
 /.config.cmd
 /.config.old
 /..config.tmp
