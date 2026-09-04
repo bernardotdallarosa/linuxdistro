@@ -3,7 +3,6 @@
 import fcntl
 import json
 import os
-import re
 import socket
 import struct
 import time
@@ -28,12 +27,17 @@ def _get_cpu_usage():
     return idle, total
 
 def get_cpu_info():
+    model = "desconhecido"
+    speed = 0.0
+
     with open("/proc/cpuinfo", "r") as file:
         for l in file:
-            if l.startswith("model name"):
+            if l.startswith("model name") and model == "desconhecido":
                 model = l.split(":")[1].strip()
-            elif l.startswith("cpu MHz"):
+            elif l.startswith("cpu MHz") and speed == 0.0:
                 speed = float(l.split(":")[1].strip())
+            if model != "desconhecido" and speed != 0.0:
+                break
     idle1, total1 = _get_cpu_usage()
     time.sleep(1)
     idle2, total2 = _get_cpu_usage()
@@ -57,15 +61,18 @@ def get_cpu_info():
     }
 
 def get_memory_info():
-    valores = {}
-    with open("/proc/meminfo", "r") as file:
-        for linha in file:
-            chave, resto = linha.split(":", 1)
-            numero_kb = int(resto.strip().split()[0])
-            valores[chave] = numero_kb
+    total_kb = 0
+    available_kb = 0
 
-    total_kb = valores["MemTotal"]
-    available_kb = valores.get("MemAvailable", valores["MemFree"])
+    with open("/proc/meminfo", "r") as file:
+        for l in file:
+            if l.startswith("MemTotal:"):
+                total_kb = int(l.split()[1])
+            elif l.startswith("MemAvailable:"):
+                available_kb = int(l.split()[1])
+            if total_kb and available_kb:
+                break
+
     used_kb = total_kb - available_kb
 
     return {
@@ -91,84 +98,42 @@ def get_process_list():
 
 def get_disks():
     discos = []
-    with open("/proc/partitions", "r") as file:
-        linhas = file.readlines()[2:]
-        for linha in linhas:
-            partes = linha.split()
-            if len(partes) != 4:
-                continue
-            _, _, blocos, nome = partes
-            size_mb = int(blocos) / 1024
-            discos.append({"device": nome, "size_mb": round(size_mb, 2)})
+    for nome in os.listdir("/sys/block"):
+        if nome.startswith(("loop", "ram", "zram")):
+            continue
+        with open(f"/sys/block/{nome}/size", "r") as file:
+            setores = int(file.read().strip())
+        size_mb = (setores * 512) / (1024 * 1024)
+        discos.append({"device": nome, "size_mb": int(size_mb)})
     return discos
 
-_PADRAO_PORTA = re.compile(r"^\d+-[\d.]+$")
-
-def get_usb_devices() -> list[dict]:
-    base = "/sys/bus/usb/devices"
-    dispositivos = []
-
-    for nome in os.listdir(base):
-        if not _PADRAO_PORTA.match(nome):
-            continue  # ignora usb1, usb2 (root hubs) e outras entradas (ex: 1-1:1.0, interfaces)
-
-        caminho = os.path.join(base, nome)
-        descricao = _obter_descricao(caminho)
-
-        dispositivos.append({
-            "port": nome,
-            "description": descricao,
-        })
-
-    return dispositivos
-
-
-def _obter_descricao(caminho: str) -> str:
-    # 1ª tentativa: campo "product" (string legível, ex: "USB Optical Mouse")
+def _description(caminho):
     try:
         with open(os.path.join(caminho, "product"), "r") as file:
             return file.read().strip()
     except FileNotFoundError:
-        pass
-
-    # fallback: monta descrição a partir de vendor/product ID em hex
-    try:
-        with open(os.path.join(caminho, "idVendor"), "r") as file:
-            vendor = file.read().strip()
-        with open(os.path.join(caminho, "idProduct"), "r") as file:
-            product = file.read().strip()
-        return f"Vendor {vendor}:Product {product}"
-    except FileNotFoundError:
         return "desconhecido"
 
-def _listar_interfaces() -> list[str]:
-    return os.listdir("/sys/class/net")
-
-SIOCGIFADDR = 0x8915  # constante do kernel Linux para "get interface address"
-
-def _obter_ip(interface: str) -> str | None:
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        pacote = fcntl.ioctl(
-            s.fileno(),
-            SIOCGIFADDR,
-            struct.pack("256s", interface.encode("utf-8")[:15])
-        )
-        return socket.inet_ntoa(pacote[20:24])
-    except OSError:
-        return None  # interface sem IPv4 (down, ou só IPv6)
-    finally:
-        s.close()
-
-def get_network_adapters() -> list[dict]:
-    adaptadores = []
-    for interface in _listar_interfaces():
-        ip = _obter_ip(interface)
-        if ip is not None:
-            adaptadores.append({
-                "interface": interface,
-                "ip_address": ip,
+def get_usb_devices():
+    dispositivos = []
+    for nome in os.listdir("/sys/bus/usb/devices"):
+        if "-" in nome and ":" not in nome:
+            caminho = f"/sys/bus/usb/devices/{nome}"
+            dispositivos.append({
+                "port": nome,
+                "description": _description(caminho)
             })
+    return dispositivos
+
+def get_network_adapters():
+    adaptadores = []
+    for interface in os.listdir("/sys/class/net"):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            try:
+                pacote = fcntl.ioctl(s.fileno(), 0x8915, struct.pack("256s", interface.encode()[:15]))
+                adaptadores.append({"interface": interface, "ip_address": socket.inet_ntoa(pacote[20:24])})
+            except OSError:
+                pass
     return adaptadores
 
 # --- Servidor HTTP --- #
