@@ -11,3 +11,5 @@ chmod +x $BASE_DIR/target/etc/init.d/S50hello
 
 cp $BASE_DIR/../custom-scripts/systeminfo.py $BASE_DIR/target/usr/bin
 chmod +x $BASE_DIR/target/usr/bin/systeminfo.py
+
+make -C $BASE_DIR/../modules/simple_driver/
