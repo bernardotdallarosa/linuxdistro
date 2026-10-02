@@ -1,0 +1,1 @@
+asmlinkage long sys_logPrint(const char __user *msg);

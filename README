@@ -1,26 +1,51 @@
-Buildroot is a simple, efficient and easy-to-use tool to generate embedded
-Linux systems through cross-compilation.
+# T2 — Laboratório de Sistemas Operacionais
 
-The documentation can be found in docs/manual. You can generate a text
-document with 'make manual-text' and read output/docs/manual/manual.text.
-Online documentation can be found at https://buildroot.org/docs.html
+**Autores:** André Luiz, Bernardo Dallarosa e Guilherme Braun
 
-To build and use the buildroot stuff, do the following:
+---
 
-1) run 'make menuconfig'
-2) select the target architecture and the packages you wish to compile
-3) run 'make'
-4) wait while it compiles
-5) find the kernel, bootloader, root filesystem, etc. in output/images
+## Como executar
 
-You do not need to be root to build or run buildroot.  Have fun!
+| Passo | Comando | O que faz |
+|---|---|---|
+| 1 | `dd if=/dev/zero of=sdb.bin bs=512 count=2097152` *(raiz do projeto)* | Cria o disco bruto de **1 GiB** usado como `/dev/sdb` |
+| 2 | `make` dentro de `disk-test/`, `modules/` e `linux-4.13.9/syscall` | Compila os módulos de kernel e as aplicações de teste de cada tópico |
+| 3 | `make` *(raiz do projeto)* | Builda a distribuição completa via Buildroot |
+| 4 | `./start-qemu.sh` | Inicia a máquina virtual |
+| 5 | Login: `root` - senha: `root` | Acessa o sistema dentro da VM |
 
-Buildroot comes with a basic configuration for a number of boards. Run
-'make list-defconfigs' to view the list of provided configurations.
+---
 
-Please feed suggestions, bug reports, insults, and bribes back to the
-buildroot mailing list: buildroot@buildroot.org
-You can also find us on #buildroot on OFTC IRC.
+## System calls
 
-If you would like to contribute patches, please read
-https://buildroot.org/manual.html#submitting-patches
+| Comando | Descrição |
+|---|---|
+| `sleep_test` | Lista todos os processos atualmente em estado de *sleep* (`TASK_INTERRUPTIBLE` ou `TASK_UNINTERRUPTIBLE`) |
+| `print_test <mensagem>` | Envia uma mensagem para o log do kernel |
+
+---
+
+## Driver de criptografia (XTEA)
+
+```bash
+# Carregar com chave customizada (4 palavras de 32 bits, em hexadecimal)
+modprobe xtea_driver key0="f0e1d2c3" key1="b4a59687" key2="78695a4b" key3="3c2d1e0f"
+
+# OU carregar com a chave padrão do módulo
+modprobe xtea_driver
+```
+
+```bash
+test_xtea_driver   # encripta/decripta uma mensagem via /dev/xtea_driver
+```
+
+---
+
+## Escalonador de disco (SSTF)
+
+```bash
+modprobe sstf-iosched                        # carrega o módulo
+echo sstf > /sys/block/sdb/queue/scheduler   # seleciona o SSTF para /dev/sdb
+cat /sys/block/sdb/queue/scheduler           # confirma: deve exibir [sstf]
+sector_read                                  # gera carga (fork + leituras aleatórias)
+```

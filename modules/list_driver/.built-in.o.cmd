@@ -1,0 +1,1 @@
+cmd_/home/bedallas/Projects/PUCRS/linuxdistro/buildroot/modules/list_driver/built-in.o :=  rm -f /home/bedallas/Projects/PUCRS/linuxdistro/buildroot/modules/list_driver/built-in.o; ar rcSTPD /home/bedallas/Projects/PUCRS/linuxdistro/buildroot/modules/list_driver/built-in.o

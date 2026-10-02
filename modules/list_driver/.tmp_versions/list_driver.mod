@@ -1,0 +1,3 @@
+/home/bedallas/Projects/PUCRS/linuxdistro/buildroot/modules/list_driver/list_driver.ko
+/home/bedallas/Projects/PUCRS/linuxdistro/buildroot/modules/list_driver/list_driver.o
+
