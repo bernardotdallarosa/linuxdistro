@@ -12,4 +12,6 @@ chmod +x $BASE_DIR/target/etc/init.d/S50hello
 cp $BASE_DIR/../custom-scripts/systeminfo.py $BASE_DIR/target/usr/bin
 chmod +x $BASE_DIR/target/usr/bin/systeminfo.py
 
+echo "tracefs /sys/kernel/tracing tracefs 0 0" >> "$BASE_DIR/target/etc/fstab"
+
 make -C $BASE_DIR/../modules/simple_driver/

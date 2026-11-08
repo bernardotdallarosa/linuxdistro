@@ -10,6 +10,8 @@ if [ -e "${TARGET_DIR}/etc/inittab" ]; then
 tty1::respawn:/sbin/getty -L  tty1 0 vt100 # QEMU graphical window' "${TARGET_DIR}/etc/inittab"
 fi
 
+cp $BASE_DIR/../custom-scripts/fstab $BASE_DIR/target/etc/fstab
+
 #Compile the syscall_test.c
 BUILDROOT_DIR=$BASE_DIR/..
 COMPILER=$BUILDROOT_DIR/output/host/bin/i686-buildroot-linux-gnu-gcc
