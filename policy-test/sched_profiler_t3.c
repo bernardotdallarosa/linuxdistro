@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/syscall.h>
 
 /*
 André Luiz, Bernardo Dallarosa e Guilherme Braun
@@ -36,6 +37,7 @@ void *task(void *arg){
 		fprintf(stderr, "thread %c: %s\n", c, strerror(err));
 		exit(1);
 	}
+	printf("Thread %c -> TID: %d\n", c, (pid_t)syscall(__NR_gettid));
 	pthread_barrier_wait(&start);
     if (policy[id] == SCHED_FIFO)
 	    usleep(100000);	/* temporário: a fifo dorme 100 ms */
